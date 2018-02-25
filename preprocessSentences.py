@@ -52,7 +52,7 @@ def tokenize_corpus(path, train=True):
   classes = []
   samples = []
   docs = []
-  if train == True:
+  if train:
     words = {}
   f = open(path, 'r')
   lines = f.readlines()
@@ -65,11 +65,12 @@ def tokenize_corpus(path, train=True):
     # remove noisy characters; tokenize
     raw = re.sub('[%s]' % ''.join(chars), ' ', raw)
     tokens = word_tokenize(raw)
+    bigrm = nltk.bigrams(raw)
     tokens = [w.lower() for w in tokens]
     tokens = [w for w in tokens if w not in stopWords]
     tokens = [wnl.lemmatize(t) for t in tokens]
     tokens = [porter.stem(t) for t in tokens]   
-    if train == True:
+    if train:
      for t in tokens: 
          try:
              words[t] = words[t]+1
@@ -77,7 +78,7 @@ def tokenize_corpus(path, train=True):
              words[t] = 1
     docs.append(tokens)
 
-  if train == True:
+  if train:
      return(docs, classes, samples, words)
   else:
      return(docs, classes, samples)
