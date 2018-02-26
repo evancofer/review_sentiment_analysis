@@ -1,5 +1,5 @@
 '''
-simpleClassifier.py
+simple_classifier.py
 Python Version 2.7
 
 Uses the bag-of-words approach to perform sentiment classification using a few different
@@ -22,6 +22,7 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.ensemble import RandomForestClassifier
 # Local imports.
 import preprocessSentences
+import dataVisualization
 
 
 # Command line arguments.
@@ -59,7 +60,6 @@ def evaluate_results(pred_lbls, true_lbls):
             correct += 1
     ret["accuracy"] = float(correct) / len(pred_lbls)
     return ret
-
 
 def main(train_fname, test_fname, val_frac, val_type,
         shuffle=True, test=False, verbose=False):
@@ -106,12 +106,14 @@ def main(train_fname, test_fname, val_frac, val_type,
     # Get training data and shuffle it.
     (train_docs, train_lbls, train_vocab) = process_file(train_fname, 4, True)
     train_data = preprocessSentences.find_wordcounts(train_docs, train_vocab)
+    dataVisualization.pca_viz(train_data, train_lbls, "PCA of Training Data")
+    dataVisualization.generate_wordcloud(train_fname)
+
     if shuffle:
         perm = list(np.random.permutation(train_data.shape[0]))
         train_data = train_data[perm, :]
         train_lbls = train_lbls[perm, :]
         train_docs = [train_docs[i] for i in perm]
-
     if test:
         datasets = ["test", "validation"]
     else:
@@ -132,6 +134,7 @@ def main(train_fname, test_fname, val_frac, val_type,
         (test_docs, test_lbls, test_vocab) = process_file(test_fname, 4, False)
         test_data = preprocessSentences.find_wordcounts(test_docs, train_vocab)
         test_lbls = np.asarray(test_lbls)
+        dataVisualization.pca_viz(test_data, test_lbls, "PCA of Testing Data")
 
     global_models = build_models()
     for i, (fold_start, fold_end) in enumerate(folds):

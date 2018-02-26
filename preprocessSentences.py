@@ -1,6 +1,7 @@
 import nltk, re, pprint
 from nltk import word_tokenize
 from nltk.corpus import stopwords
+from nltk.util import ngrams
 from os import listdir
 from os.path import isfile, isdir, join
 import numpy
@@ -70,7 +71,7 @@ def tokenize_corpus(path, train=True):
     tokens = [wnl.lemmatize(t) for t in tokens]
     tokens = [porter.stem(t) for t in tokens]
 
-    bigrams = list(nltk.bigrams(raw.rsplit()))
+    bigrams = list(nltk.ngrams(raw.rsplit(), 2))
     bigrams = [[a.lower(), b.lower()] for a,b in bigrams]
     bigrams = [[a,b] for a,b in bigrams if (a not in stopWords) and (b not in stopWords)]
     bigrams = [[wnl.lemmatize(a), wnl.lemmatize(b)] for a,b in bigrams]
