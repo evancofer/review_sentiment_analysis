@@ -35,11 +35,10 @@ parser.add_argument('--val-type', dest="validation_type", default="single")
 parser.add_argument('--no-shuffle', dest="shuffle", action="store_false")
 args = parser.parse_args()
 
-
-def process_file(path, wordCountThreshold, train):
-    if train is True:
+def process_file(path, wc_threshold, train):
+    if train:
         (docs, classes, samples, words) = preprocessSentences.tokenize_corpus(path, train)
-        vocab = preprocessSentences.wordcount_filter(words, wordCountThreshold)
+        vocab = preprocessSentences.wordcount_filter(words, wc_threshold)
         classes = np.asarray(classes).reshape((len(classes), 1))
         return(docs, classes, vocab)
     else:
@@ -55,7 +54,7 @@ def evaluate_results(pred_lbls, true_lbls):
     """
     ret = {}
     correct = 0
-    for i in range(1, len(pred_lbls)): # Why does this start at 1?
+    for i in range(0, len(pred_lbls)):
         if pred_lbls[i] == true_lbls[i]:
             correct += 1
     ret["accuracy"] = float(correct) / len(pred_lbls)
@@ -82,7 +81,7 @@ def main(train_fname, test_fname, val_frac, val_type,
         for model_name in models.keys():
             models[model_name] = {"model": models[model_name]}
             models[model_name].update({"train": {}, "validation": {}})
-            if test is True:
+            if test:
                 models[model_name].update({"test": {}})
         return models
 
@@ -107,13 +106,13 @@ def main(train_fname, test_fname, val_frac, val_type,
     # Get training data and shuffle it.
     (train_docs, train_lbls, train_vocab) = process_file(train_fname, 4, True)
     train_data = preprocessSentences.find_wordcounts(train_docs, train_vocab)
-    if shuffle is True:
+    if shuffle:
         perm = list(np.random.permutation(train_data.shape[0]))
         train_data = train_data[perm, :]
         train_lbls = train_lbls[perm, :]
         train_docs = [train_docs[i] for i in perm]
 
-    if test is True:
+    if test:
         datasets = ["test", "validation"]
     else:
         datasets = ["validation"]
@@ -129,20 +128,20 @@ def main(train_fname, test_fname, val_frac, val_type,
             fold_start = int(max(0, i*step))
             fold_end = int(min(train_data.shape[0], step*(i+1)))
             folds.append((fold_start, fold_end))
-    if test is True:
-        (test_docs, test_lbls) = process_file(test_fname, 4, False)
+    if test:
+        (test_docs, test_lbls, test_vocab) = process_file(test_fname, 4, False)
         test_data = preprocessSentences.find_wordcounts(test_docs, train_vocab)
         test_lbls = np.asarray(test_lbls)
-    #print(folds)
+
     global_models = build_models()
     for i, (fold_start, fold_end) in enumerate(folds):
         models = build_models()
         cur_val_data = train_data[fold_start:fold_end,]
         cur_val_lbls = train_lbls[fold_start:fold_end,].flatten()
         cur_val_docs = train_docs[fold_start:fold_end]
-        cur_train_data = np.vstack([train_data[:fold_start,], train_data[fold_end:,]])
-        cur_train_lbls = np.vstack([train_lbls[:fold_start,], train_lbls[fold_end:,]]).flatten()
-        cur_train_docs = sum(train_docs[:fold_start], []) + sum(train_docs[fold_end:], [])
+        cur_train_data = np.vstack([train_data[fold_start:,], train_data[:fold_end,]])
+        cur_train_lbls = np.vstack([train_lbls[fold_start:,], train_lbls[:fold_end,]]).flatten()
+        cur_train_docs = sum(train_docs[fold_start:], []) + sum(train_docs[:fold_end], [])
 
         #TODO: Keep information on the training performance (e.g. time)
         # Training, validation, and testing.
@@ -150,13 +149,13 @@ def main(train_fname, test_fname, val_frac, val_type,
             models[model_name]["model"].fit(cur_train_data, cur_train_lbls)
         for model_name in models.keys():
             models = predict_data(models, model_name, "validation", cur_val_data, cur_val_lbls)
-        if test is True:
+        if test:
             for model_name in models.keys():
-                models = predict_data(model_name, "test", test_data, test_lbls)
+                models = predict_data(models, model_name, "test", test_data, test_lbls)
 
         for dataset in datasets:
             for model_name in models.keys():
-                models[model_name].pop("model")
+                #models[model_name].pop("model")
                 if "performance" not in global_models[model_name][dataset]:
                     global_models[model_name][dataset].update({"performance": {}})
                 for metric_name in models[model_name][dataset]["performance"]:
@@ -167,7 +166,6 @@ def main(train_fname, test_fname, val_frac, val_type,
     for model_name in global_models.keys():
         for dataset in datasets:
             print_performance(global_models, model_name, dataset)
-
 
 def test_input_path(fname):
     """
