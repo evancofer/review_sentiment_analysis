@@ -65,17 +65,34 @@ def tokenize_corpus(path, train=True):
     # remove noisy characters; tokenize
     raw = re.sub('[%s]' % ''.join(chars), ' ', raw)
     tokens = word_tokenize(raw)
-    bigrm = nltk.bigrams(raw)
     tokens = [w.lower() for w in tokens]
     tokens = [w for w in tokens if w not in stopWords]
     tokens = [wnl.lemmatize(t) for t in tokens]
-    tokens = [porter.stem(t) for t in tokens]   
+    tokens = [porter.stem(t) for t in tokens]
+
+    bigrams = list(nltk.bigrams(raw.rsplit()))
+    bigrams = [[a.lower(), b.lower()] for a,b in bigrams]
+    bigrams = [[a,b] for a,b in bigrams if (a not in stopWords) and (b not in stopWords)]
+    bigrams = [[wnl.lemmatize(a), wnl.lemmatize(b)] for a,b in bigrams]
+    bigrams = [[porter.stem(a), porter.stem(b)] for a,b in bigrams]
+
     if train:
-     for t in tokens: 
-         try:
-             words[t] = words[t]+1
-         except:
-             words[t] = 1
+      for t in tokens: 
+        try:
+          words[t] = words[t]+1
+        except:
+          words[t] = 1
+      for bigram in bigrams:
+        if len(bigram) < 2:
+          continue
+        combined = ",".join(bigram)
+        try:
+          words[combined] = words[combined]+1
+        except:
+          words[combined] = 1
+
+    for b in bigrams:
+      tokens.append(b)
     docs.append(tokens)
 
   if train:
@@ -103,9 +120,13 @@ def find_wordcounts(docs, vocab):
        doc = docs[i]
 
        for t in doc:
+        if isinstance(t, list):
+          bigram=",".join(t)
+          index_t=vocabIndex.get(bigram)
+        else:
           index_t=vocabIndex.get(t)
-          if index_t>=0:
-             bagofwords[i,index_t]=bagofwords[i,index_t]+1
+        if index_t>=0:
+          bagofwords[i,index_t]=bagofwords[i,index_t]+1
 
    print "Finished find_wordcounts for:", len(docs), "docs"
    return(bagofwords)
